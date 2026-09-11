@@ -1,0 +1,10 @@
+{
+  "version": "1.0",
+  "sampleSize": 200,
+  "sourceCases": 24264,
+  "seed": 42,
+  "samplingMethod": "Deterministic uniform random sample using Fisher-Yates shuffle with a fixed seed.",
+  "labelingMethod": "Each case will be manually assigned one intent from the approved AmazonHelp taxonomy.",
+  "purpose": "Held-out golden evaluation set for measuring intent classification and downstream system quality.",
+  "generatedAt": "2026-09-11T17:57:37.224Z"
+}
