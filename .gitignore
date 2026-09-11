@@ -3,4 +3,9 @@ node_modules/
 data/raw/
 *.csv
 
-processed/
+processed/*
+
+!processed/intent-taxonomy.json
+!processed/golden-set.jsonl
+!processed/golden-set-metadata.json
+!processed/golden-set-labeling.csv
