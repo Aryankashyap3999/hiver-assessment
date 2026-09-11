@@ -1,14 +1,40 @@
 import fs from "fs";
 import { parse } from "csv-parse";
 
-const filePath =
-    process.argv[2] ||
+const defaultFilePath =
     "/home/aryankashyap/myworkfolder/dataset/archive/twcs/twcs.csv";
+
+const fileArgument = process.argv.find(
+    (arg) => !arg.startsWith("--") && arg !== process.argv[0] && arg !== process.argv[1]
+);
+
+const filePath = fileArgument || defaultFilePath;
 
 const TARGET_BRAND = "AmazonHelp";
 
 const tweets = new Map();
 const replies = new Map();
+
+const OUTPUT_DIR = "processed";
+const OUTPUT_FILE = `${OUTPUT_DIR}/amazonhelp-conversations.jsonl`;
+
+const limitArgument = process.argv.find((arg) =>
+    arg.startsWith("--limit=")
+);
+
+const conversationLimit = limitArgument
+    ? Number(limitArgument.split("=")[1])
+    : 10000;
+
+function ensureOutputDirectory() {
+    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+}
+
+function writeConversation(outputStream, conversation) {
+    outputStream.write(
+        JSON.stringify(conversation) + "\n"
+    );
+}
 
 function processTweet(row) {
     const tweet = {
@@ -131,7 +157,10 @@ parser.on("end", () => {
     const roots = new Set();
 
     for (const tweet of tweets.values()) {
-        if (!tweet.inbound) {
+        if (
+            !tweet.inbound &&
+            tweet.authorId === TARGET_BRAND
+        ) {
             const rootId = findConversationRoot(tweet.tweetId);
 
             if (rootId) {
@@ -140,18 +169,34 @@ parser.on("end", () => {
         }
     }
 
-    console.log(`Candidate conversation roots: ${roots.size}`);
+    console.log(
+        `AmazonHelp conversation roots: ${roots.size}`
+    );
+
+    ensureOutputDirectory();
+
+    const outputStream = fs.createWriteStream(
+        OUTPUT_FILE
+    );
 
     let processed = 0;
+    let skipped = 0;
+    let totalMessages = 0;
 
     for (const rootId of roots) {
+        if (processed >= conversationLimit) {
+            break;
+        }
+
         const conversation = buildConversation(rootId);
 
         if (!isAmazonHelpConversation(conversation)) {
+            skipped++;
             continue;
         }
 
         if (!hasCustomerMessage(conversation)) {
+            skipped++;
             continue;
         }
 
@@ -160,18 +205,45 @@ parser.on("end", () => {
             conversation
         );
 
-        console.log(
-            JSON.stringify(normalized, null, 2)
+        writeConversation(
+            outputStream,
+            normalized
         );
 
         processed++;
-
-        if (processed >= 5) {
-            break;
-        }
+        totalMessages += normalized.messages.length;
     }
 
-    console.log(`\nSample conversations processed: ${processed}`);
+    outputStream.end(() => {
+        const averageMessages =
+            processed > 0
+                ? totalMessages / processed
+                : 0;
+
+        console.log("\n================================");
+        console.log("AMAZONHELP PROCESSING");
+        console.log("================================");
+
+        console.log(
+            `Conversations written: ${processed}`
+        );
+
+        console.log(
+            `Conversations skipped: ${skipped}`
+        );
+
+        console.log(
+            `Total messages: ${totalMessages}`
+        );
+
+        console.log(
+            `Average messages: ${averageMessages.toFixed(2)}`
+        );
+
+        console.log(
+            `Output: ${OUTPUT_FILE}`
+        );
+    });
 });
 
 parser.on("error", (error) => {
