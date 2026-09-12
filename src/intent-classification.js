@@ -48,23 +48,13 @@ function getTaxonomy() {
     return cachedTaxonomy;
 }
 
-let cachedAdapter = null;
-
-function getAdapter() {
-    if (!cachedAdapter) {
-        cachedAdapter = createLLMAdapter();
-    }
-
-    return cachedAdapter;
-}
-
 export async function classifyIntent(currentMessage) {
     const taxonomy = getTaxonomy();
     const systemPrompt = buildSystemPrompt(taxonomy);
     const schema = buildIntentSchema(taxonomy);
     const validIntents = new Set(taxonomy.intents.map((intent) => intent.name));
 
-    const llm = getAdapter();
+    const llm = createLLMAdapter();
 
     const result = await llm.generateStructured({
         messages: [

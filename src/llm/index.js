@@ -2,13 +2,23 @@ import { config } from './config.js';
 import { OpenAIAdapter } from './openai.js';
 import { GeminiAdapter } from './gemini.js';
 
+let cachedAdapter = null;
+
 export function createLLMAdapter() {
+  if (cachedAdapter) {
+    return cachedAdapter;
+  }
+
   switch (config.provider) {
     case 'openai':
-      return new OpenAIAdapter();
+      cachedAdapter = new OpenAIAdapter();
+      break;
     case 'gemini':
-      return new GeminiAdapter();
+      cachedAdapter = new GeminiAdapter();
+      break;
     default:
       throw new Error(`Unsupported LLM_PROVIDER: "${config.provider}"`);
   }
+
+  return cachedAdapter;
 }
