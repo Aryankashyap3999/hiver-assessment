@@ -73,18 +73,8 @@ function buildUserMessage({ currentMessage, context, predictedIntent, retrievedE
     ].join("\n");
 }
 
-let cachedAdapter = null;
-
-function getAdapter() {
-    if (!cachedAdapter) {
-        cachedAdapter = createLLMAdapter();
-    }
-
-    return cachedAdapter;
-}
-
 export async function generateResponse({ currentMessage, context = [], predictedIntent, retrievedExamples = [] }) {
-    const llm = getAdapter();
+    const llm = createLLMAdapter();
 
     return llm.generateStructured({
         messages: [
