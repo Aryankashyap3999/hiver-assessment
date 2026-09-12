@@ -23,7 +23,7 @@ node scripts/evaluate-judge.js
 
 **Why it failed:** The retrieval tokenizer (`src/retrieval.js`) splits text on whitespace. Japanese doesn't delimit words with spaces, so an entire Japanese sentence becomes a single "token." TF-IDF matching then only fires when two messages share a long, nearly-identical substring — it can't do partial/sub-word matching the way it does for English.
 
-**Confirmed, not just hypothesized:** across the 14 CJK-script cases in the golden set, retrieval returned zero matches for 6 of them (**42.9%**), versus 2 of 186 Latin-script cases (**1.1%**) — a ~40x gap. When CJK retrieval *does* return a match, its mean top score is 0.93 (near-duplicate-only), versus 0.41 for Latin-script matches — consistent with an all-or-nothing matching pattern rather than graded relevance.
+**Confirmed, not just hypothesized:** across the 14 CJK-script cases in the golden set, retrieval returned zero matches for 6 of them (**42.9%**), versus 2 of 186 Latin-script cases (**1.1%**) — a ~40x gap. When CJK retrieval *does* return a match, its mean top score is 0.93 (near-duplicate-only), versus 0.40 for Latin-script matches — consistent with an all-or-nothing matching pattern rather than graded relevance.
 
 **Possible improvement:** Tokenize CJK text with character n-grams (e.g., bigrams) instead of whitespace splitting, or use a proper CJK segmenter. This is a targeted, bounded fix to `tokenize()` in `src/retrieval.js` — not a retrieval-architecture change.
 
