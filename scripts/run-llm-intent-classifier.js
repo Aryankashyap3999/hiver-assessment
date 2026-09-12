@@ -1,11 +1,9 @@
 import fs from "fs";
 import readline from "readline";
-import { createLLMAdapter } from "../src/llm/index.js";
+import { classifyIntent } from "../src/intent-classification.js";
 
 const GOLDEN_SET_PATH = "processed/golden-set.jsonl";
-const TAXONOMY_PATH = "processed/intent-taxonomy.json";
 const OUTPUT_PATH = "processed/llm-intent-results.json";
-const SCHEMA_NAME = "intent_classification";
 
 async function loadGoldenSet(inputPath) {
     const cases = [];
@@ -26,40 +24,6 @@ async function loadGoldenSet(inputPath) {
     return cases;
 }
 
-function loadTaxonomy() {
-    const raw = fs.readFileSync(TAXONOMY_PATH, "utf-8");
-    return JSON.parse(raw);
-}
-
-function buildSystemPrompt(taxonomy) {
-    const intentDescriptions = taxonomy.intents
-        .map((intent) => `- ${intent.name}: ${intent.description}`)
-        .join("\n");
-
-    return [
-        "You are classifying a customer support message into exactly one intent.",
-        "Use only the approved taxonomy below. Choose exactly one intent based on the customer's primary problem, not merely individual keywords in the message.",
-        "Use \"OTHER / UNCLEAR\" when the message does not contain enough information or does not clearly belong to another category.",
-        "",
-        "Approved taxonomy:",
-        intentDescriptions
-    ].join("\n");
-}
-
-function buildIntentSchema(taxonomy) {
-    return {
-        type: "object",
-        properties: {
-            intent: {
-                type: "string",
-                enum: taxonomy.intents.map((intent) => intent.name)
-            }
-        },
-        required: ["intent"],
-        additionalProperties: false
-    };
-}
-
 function saveResults(predictions) {
     const results = {
         classifier: "llm",
@@ -73,32 +37,11 @@ function saveResults(predictions) {
     );
 }
 
-async function classifyCase(llm, systemPrompt, schema, caseData) {
-    const result = await llm.generateStructured({
-        messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: caseData.currentMessage }
-        ],
-        schema,
-        schemaName: SCHEMA_NAME
-    });
-
-    return result.intent;
-}
-
 async function runClassifier() {
     const inputPath = process.argv[2] || GOLDEN_SET_PATH;
 
     console.log("Loading input cases...");
     const goldenCases = await loadGoldenSet(inputPath);
-
-    console.log("Loading approved intent taxonomy...");
-    const taxonomy = loadTaxonomy();
-
-    const systemPrompt = buildSystemPrompt(taxonomy);
-    const schema = buildIntentSchema(taxonomy);
-    const validIntents = new Set(taxonomy.intents.map((intent) => intent.name));
-    const llm = createLLMAdapter();
 
     const predictions = [];
 
@@ -107,13 +50,7 @@ async function runClassifier() {
 
         console.log(`Classifying case ${i + 1}/${goldenCases.length}: ${caseData.caseId}`);
 
-        const predictedIntent = await classifyCase(llm, systemPrompt, schema, caseData);
-
-        if (!validIntents.has(predictedIntent)) {
-            throw new Error(
-                `LLM returned an intent outside the approved taxonomy: "${predictedIntent}" (case ${caseData.caseId})`
-            );
-        }
+        const predictedIntent = await classifyIntent(caseData.currentMessage);
 
         predictions.push({
             caseId: caseData.caseId,
