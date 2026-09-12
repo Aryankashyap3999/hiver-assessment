@@ -195,6 +195,17 @@ async function main() {
             `support=${metric.support}`
         );
     }
+
+    console.log("\nConfusion matrix (actual -> predicted: count):");
+
+    for (const [actual, row] of Object.entries(metrics.confusionMatrix)) {
+        const predictedCounts = Object.entries(row)
+            .filter(([, count]) => count > 0)
+            .map(([predicted, count]) => `${predicted}: ${count}`)
+            .join(", ");
+
+        console.log(`${actual} => ${predictedCounts}`);
+    }
 }
 
 main().catch((error) => {
